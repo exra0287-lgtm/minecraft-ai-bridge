@@ -5,58 +5,53 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+# --- إعدادات المراقبة ---
+stats = {"requests": 0}
+
 # --- إعدادات مفاتيح OpenAI ---
-api_keys = [
-    os.environ.get("OPENAI_API_KEY1"),
-    os.environ.get("OPENAI_API_KEY2"),
-    os.environ.get("OPENAI_API_KEY3")
-]
+api_keys = [os.environ.get(f"OPENAI_API_KEY{i}") for i in range(1, 4)]
 api_keys = [key for key in api_keys if key]
 key_cycle = itertools.cycle(api_keys)
 
-# --- كود صفحة الويب والعداد ---
+# --- كود صفحة الويب المطور (يظهر حالة الضغط والوقت) ---
 HTML_CODE = """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>AI System Dashboard</title>
     <style>
-        body { background-color: #f0f2f5; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        #timer { font-size: 3em; color: #333; font-weight: bold; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        .status { color: #28a745; font-weight: bold; }
+        .count { font-size: 2em; color: #007bff; }
+        #timer { font-size: 1.5em; color: #555; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h1>AI System is Online</h1>
+        <h1>System Status: <span class="status">Online</span></h1>
+        <p>Total Requests Handled:</p>
+        <div class="count">{{ stats.requests }}</div>
+        <p>Time Online:</p>
         <div id="timer">00:00:00</div>
     </div>
     <script>
-        let seconds = 0, minutes = 0, hours = 0;
-        function updateTimer() {
-            seconds++;
-            if (seconds == 60) { seconds = 0; minutes++; }
-            if (minutes == 60) { minutes = 0; hours++; }
-            document.getElementById('timer').innerText = 
-                (hours < 10 ? "0"+hours : hours) + ":" + 
-                (minutes < 10 ? "0"+minutes : minutes) + ":" + 
-                (seconds < 10 ? "0"+seconds : seconds);
-        }
-        setInterval(updateTimer, 1000);
+        let s=0,m=0,h=0;
+        setInterval(()=>{ s++; if(s==60){s=0;m++} if(m==60){m=0;h++}
+        document.getElementById('timer').innerText = (h<10?'0'+h:h)+':'+(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
+        }, 1000);
     </script>
 </body>
 </html>
 """
 
-# --- المسارات (Routes) ---
-
 @app.route('/')
 def home():
-    return render_template_string(HTML_CODE)
+    return render_template_string(HTML_CODE, stats=stats)
 
 @app.route('/ask', methods=['POST'])
 def ask():
+    stats["requests"] += 1  # زيادة عداد الطلبات عند كل استفسار
     try:
         data = request.json
         user_message = data.get('message', '')
@@ -72,7 +67,7 @@ def ask():
         )
         return jsonify({"answer": response.choices[0].message.content})
     except Exception as e:
-        return jsonify({"answer": "Error: " + str(e)})
+        return jsonify({"answer": "Error: Key exhausted or API limit reached."})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
