@@ -5,16 +5,16 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-# سجل المحادثات
+# سجل المحادثات والعداد
 chat_history = []
 stats = {"requests": 0}
 
-# إعدادات المفاتيح
+# إعدادات مفاتيح OpenAI
 api_keys = [os.environ.get(f"OPENAI_API_KEY{i}") for i in range(1, 4)]
 api_keys = [k for k in api_keys if k]
 key_cycle = itertools.cycle(api_keys)
 
-# تصميم الصفحة البيضاء (بسيطة وواضحة)
+# تصميم الصفحة البيضاء
 HTML_CODE = """
 <!DOCTYPE html>
 <html>
@@ -26,6 +26,7 @@ HTML_CODE = """
         .log { margin-bottom: 10px; padding: 8px; border-bottom: 1px solid #eee; }
         .player { color: #555; font-weight: bold; }
         .ai { color: #007bff; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -53,9 +54,13 @@ def ask():
     data = request.json
     msg = data.get('message', '')
     
+    # تسجيل رسالة اللاعب
     chat_history.append(f"<span class='player'>Player:</span> {msg}")
     
     try:
+        if not api_keys:
+            raise Exception("No API Keys configured")
+            
         client = OpenAI(api_key=next(key_cycle))
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -64,9 +69,13 @@ def ask():
         ai_reply = response.choices[0].message.content
         chat_history.append(f"<span class='ai'>AI:</span> {ai_reply}")
         return jsonify({"answer": ai_reply})
+        
     except Exception as e:
-        chat_history.append(f"<span style='color:red'>Error: {str(e)}</span>")
-        return jsonify({"answer": "Error"})
+        error_msg = str(e)
+        chat_history.append(f"<span class='error'>Error: {error_msg}</span>")
+        return jsonify({"answer": "خطأ في الاتصال"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # هذا التعديل يضمن عمل السيرفر على المنفذ الذي يحدده Render دون انطفاء
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
