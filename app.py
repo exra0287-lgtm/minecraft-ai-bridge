@@ -5,7 +5,7 @@ from openai import OpenAI
 app = Flask(__name__)
 
 # ضع جميع مفاتيحك هنا - النظام سيوزع الطلبات بينها تلقائياً
-API_KEYS = ["sk-...iBcA", "sk-...ivEA", "sk-...wtoA"]
+API_KEYS = ["OPENAI_API_KEY", "OPENAI_API_KEY", "OPENAI_API_KEY"]
 key_cycle = itertools.cycle(API_KEYS)
 
 @app.route('/')
