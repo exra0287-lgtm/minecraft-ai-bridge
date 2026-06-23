@@ -1,16 +1,17 @@
-from flask import Flask, request, jsonify, send_from_directory
+import os
 import itertools
+from flask import Flask, request, jsonify
 from openai import OpenAI
 
 app = Flask(__name__)
 
-# ضع جميع مفاتيحك هنا - النظام سيوزع الطلبات بينها تلقائياً
-API_KEYS = ["OPENAI_API_KEY1", "OPENAI_API_KEY2", "OPENAI_API_KEY3"]
-key_cycle = itertools.cycle(API_KEYS)
-
-@app.route('/')
-def index():
-    return send_from_directory('.', 'index.html')
+# هنا الكود يسحب المفاتيح الثلاثة التي وضعتها في Render
+api_keys = [
+    os.environ.get("OPENAI_API_KEY1"),
+    os.environ.get("OPENAI_API_KEY2"),
+    os.environ.get("OPENAI_API_KEY3")
+]
+key_cycle = itertools.cycle(api_keys)
 
 @app.route('/ask', methods=['POST'])
 def ask():
@@ -29,8 +30,8 @@ def ask():
             ]
         )
         return jsonify({"answer": response.choices[0].message.content})
-    except Exception:
-        return jsonify({"answer": "System busy, please try again."})
+    except Exception as e:
+        return jsonify({"answer": "Error: " + str(e)})
 
 if __name__ == '__main__':
     app.run()
